@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duke Universal Super-App: Ultimate Edition</title>
+    <style>
+        /* --- DYNAMICZNE ZMIENNE CSS (DARK/LIGHT) --- */
+        :root {
+            --duke-blue: #002366; --duke-gold: #d4af37; --passport: #0055ff;
+            --inventory: #00a95b; --recomm: #6c5ce7; --gaming: #ff4757; --social: #8e44ad;
+            --bg: #f4f7f9; --white: #ffffff; --text: #1a1a1a; --border: #ddd; --card-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f111a; --white: #1a1d29; --text: #f0f0f0; --border: #333a4d;
+            --card-bg: #1e293b; --duke-blue: #1e90ff;
+        }
+
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; overflow-x: hidden; }
+
+        /* --- HEADER & GLOBAL UI --- */
+        header { background: var(--white); border-bottom: 3px solid var(--duke-blue); padding: 12px 20px; position: sticky; top: 0; z-index: 2000; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .logo { font-size: 26px; font-weight: 900; color: var(--duke-blue); text-decoration: none; min-width: 150px; }
+        .logo span { color: var(--duke-gold); }
+        .search-bar { flex-grow: 1; display: flex; border: 2px solid var(--duke-blue); border-radius: 30px; overflow: hidden; background: white; }
+        .search-bar input { width: 100%; border: none; padding: 10px 15px; outline: none; background: transparent; color: black; }
+
+        /* --- MODE SWITCHERS --- */
+        .controls { display: flex; gap: 10px; align-items: center; }
+        .mode-btn { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; }
+        .mode-btn:hover { opacity: 0.8; }
+
+        /* --- LAYOUT & PAGES --- */
+        .wrapper { max-width: 1400px; margin: 20px auto; display: grid; grid-template-columns: 280px 1fr 350px; gap: 20px; padding: 0 20px; transition: 0.3s; }
+        .page { display: none; animation: fadeIn 0.4s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* HYBRID: MOBILE MODE FRAME SYMLATOR */
+        body.mobile-mode .wrapper { grid-template-columns: 1fr; max-width: 420px; height: 780px; border: 10px solid #222; border-radius: 40px; overflow: hidden; position: relative; padding: 0; margin: 20px auto; box-shadow: 0 30px 60px rgba(0,0,0,0.4); background: var(--bg); }
+        body.mobile-mode header { border-radius: 30px 30px 0 0; position: absolute; width: 100%; top: 0; z-index: 3000; }
+        body.mobile-mode .sidebar, body.mobile-mode .desktop-nav { display: none; }
+        body.mobile-mode .mobile-nav { display: flex; }
+        body.mobile-mode main { margin-top: 80px; padding: 15px; padding-bottom: 80px; height: calc(100% - 160px); overflow-y: auto; }
+
+        /* --- SMART INVENTORY & AR SCANNER --- */
+        .inv-panel { background: var(--card-bg); padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--border); }
+        .swipe-bar { background: #eee; border-radius: 20px; height: 36px; position: relative; cursor: pointer; overflow: hidden; margin-top: 10px; border: 1px solid #ccc; }
+        .swipe-knob { width: 50px; height: 36px; background: var(--inventory); position: absolute; left: 0; transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); border-radius: 20px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; }
+        
+        #ar-scanner { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; backdrop-filter: blur(5px); }
+        .scan-frame { width: 250px; height: 250px; border: 4px solid var(--duke-gold); border-radius: 20px; animation: scanPulse 2s infinite; position: relative; }
+        .scan-line { width: 100%; height: 2px; background: var(--duke-gold); position: absolute; top: 0; animation: scanLine 2s infinite; box-shadow: 0 0 10px var(--duke-gold); }
+        @keyframes scanPulse { 0% { box-shadow: 0 0 5px var(--duke-gold); } 50% { box-shadow: 0 0 20px var(--duke-gold); border-color: white; } 100% { box-shadow: 0 0 5px var(--duke-gold); } }
+        @keyframes scanLine { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+
+        /* --- DUKE SOCIAL, GILDIE & MISJE (NOWOŚĆ) --- */
+        .social-panel { background: var(--card-bg); padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--border); border-top: 5px solid var(--social); }
+        .quest-log { background: linear-gradient(135deg, var(--duke-blue), #0044aa); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .q-progress-bar { background: rgba(0,0,0,0.3); height: 12px; border-radius: 6px; margin: 15px 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        .q-progress-fill { background: var(--duke-gold); height: 100%; width: 60%; transition: width 0.5s ease-out; box-shadow: 0 0 10px var(--duke-gold); }
+        .post { background: var(--bg); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid var(--social); border: 1px solid var(--border); }
+
+        /* --- PRODUCT CARDS & PANELS --- */
+        .p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .p-card { background: var(--card-bg); padding: 15px; border-radius: 15px; border: 1px solid var(--border); position: relative; transition: 0.3s; cursor: pointer; }
+        .p-card:hover { border-color: var(--duke-gold); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .p-img { height: 140px; background: rgba(0,0,0,0.05); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 40px; position: relative; }
+        
+        .gaming-card { background: #1e2129; color: white; padding: 25px; border-radius: 20px; border-left: 8px solid var(--gaming); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .sidebar { background: var(--duke-blue); color: white; padding: 20px; border-radius: 20px; position: sticky; top: 100px; height: fit-content; box-shadow: 0 10px 25px rgba(0,35,102,0.2); }
+        .ai-chat { background: rgba(255,255,255,0.1); height: 150px; border-radius: 10px; padding: 10px; font-size: 13px; overflow-y: auto; margin: 15px 0; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* --- NAVIGATIONS --- */
+        .desktop-nav { background: var(--white); border-bottom: 1px solid var(--border); display: flex; justify-content: center; gap: 20px; position: sticky; top: 73px; z-index: 1999; }
+        .tab { padding: 15px 10px; font-weight: bold; color: #888; cursor: pointer; border-bottom: 3px solid transparent; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--duke-blue); border-bottom-color: var(--duke-gold); }
+
+        .mobile-nav { position: absolute; bottom: 0; width: 100%; background: var(--white); padding: 10px; display: none; justify-content: space-around; border-top: 1px solid var(--border); border-radius: 0 0 30px 30px; z-index: 3000; box-shadow: 0 -5px 15px rgba(0,0,0,0.05); }
+        .mobile-tab { text-align: center; font-size: 22px; color: #888; cursor: pointer; position: relative; padding: 5px; }
+        .mobile-tab.active { color: var(--duke-blue); }
+        .mobile-tab small { display: block; font-size: 10px; font-weight: bold; margin-top: 2px; text-transform: uppercase; }
+        .btn-ar { background: var(--duke-blue); color: white; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; position: absolute; top: -35px; left: 50%; transform: translateX(-50%); border: 5px solid var(--white); cursor: pointer; box-shadow: 0 5px 15px rgba(0,102,255,0.3); transition: 0.2s; z-index: 3001; }
+        .btn-ar:hover { transform: translateX(-50%) scale(1.05); }
+
+        /* --- UTIL --- */
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1c1e21; color: var(--duke-gold); padding: 15px 40px; border-radius: 50px; display: none; z-index: 9999; font-weight: bold; border: 2px solid var(--duke-gold); box-shadow: 0 10px 20px rgba(0,0,0,0.3); animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { bottom: 0; opacity: 0; } to { bottom: 30px; opacity: 1; } }
+        .btn { border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    </style>
+</head>
+<body data-theme="light">
+
+<div id="toast">Operacja powiodła się</div>
+
+<div id="ar-scanner">
+    <div class="scan-frame"><div class="scan-line"></div></div>
+    <h3 style="margin-top:20px;">Duke AR Vision: Skanowanie...</h3>
+    <p id="ar-status" style="margin-bottom:20px; max-width: 80%;">Skieruj kamerę na produkt i datę ważności</p>
+    <button onclick="closeScanner()" class="btn" style="background:var(--gaming); color:white; width: auto; padding: 10px 30px;">ANULUJ</button>
+</div>
+
+<header>
+    <a href="#" class="logo" onclick="location.reload()">DUKE<span>SHOP</span></a>
+    <div class="search-bar"><input type="text" id="gSearch" placeholder="Szukaj lokalnie w Gdańsku, w Europie lub spytaj AI..." onkeyup="render()"></div>
+    <div class="controls">
+        <button class="mode-btn" onclick="toggleMobile()">📱 <span>Tryb Telefonu</span></button>
+        <button class="mode-btn" onclick="toggleTheme()" style="background:var(--duke-gold); color: black;">🌓</button>
+        <div style="font-size: 20px; cursor:pointer; color: var(--duke-blue); font-weight: bold; margin-left: 10px;">🛒 <b id="cCnt">0</b></div>
+    </div>
+</header>
+
+<nav class="desktop-nav">
+    <div class="tab active" onclick="switchPage(event, 'p-main')">Rynek & Passport</div>
+    <div class="tab" onclick="switchPage(event, 'p-inventory')">Spiżarnia & AR</div>
+    <div class="tab" onclick="switchPage(event, 'p-social')">Gildie & Social</div>
+    <div class="tab" onclick="switchPage(event, 'p-gaming')" style="color:var(--gaming)">Gaming Pass</div>
+</nav>
+
+<div class="wrapper">
+    <main>
+        <div id="p-main" class="page active">
+            <h2 id="pageTitle" style="margin-top: 0;">Dzień dobry, Gdańsk!</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px; background: var(--card-bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
+                <span style="font-weight: bold;">Region Passport:</span>
+                <button onclick="setLoc('PL')" class="mode-btn active" style="background:var(--passport)">🇵🇱 PL</button>
+                <button onclick="setLoc('CZ')" class="mode-btn">🇨🇿 CZ</button>
+                <button onclick="setLoc('DE')" class="mode-btn">🇩🇪 DE</button>
+            </div>
+            <div class="p-grid" id="mainGrid">
+                </div>
+        </div>
+
+        <div id="p-inventory" class="page">
+            <h2 style="margin-top: 0;">Twoja Spiżarnia (Smart Home)</h2>
+            <div class="inv-panel" style="border-top: 5px solid var(--inventory);">
+                <h3>🟢 Stan zapasów (Gdańsk)</h3>
+                <div id="inventory-list">
+                    <div class="post">☕ <strong>Kawa Lavazza 1kg</strong> (Zostało: 2 dni / 15%)
+                        <div class="swipe-bar" onclick="swipe(this, 'Kawa')"><div class="swipe-knob">➔</div></div>
+                    </div>
+                </div>
+                <button onclick="pop('Skanowanie AR dostępne w trybie telefonu! Kliknij ikonę aparatu na dole.')" class="btn" style="background:var(--duke-blue); color:white; margin-top:15px; width: 100%;">+ DODAJ PRODUKT (SKANER AR)</button>
+            </div>
+            <div class="inv-panel" style="border-top: 5px solid var(--recomm);">
+                <h3>♻️ Re-Commerce Hub (Twoje zasoby)</h3>
+                <div class="post" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>📱 <b>iPhone 13 128GB</b><br><small>Kupiony: 2021 | Wycena AI: 2100 zł</small></div>
+                    <button onclick="pop('Wystawiono ofertę w Re-Comm Hub!')" style="background:var(--recomm); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-size: 11px; font-weight: bold;">ODSPRZEDAJ (1-KLIK)</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="p-social" class="page">
+            <h2 style="margin-top: 0;">Duke Social: Gildia Gdańsk</h2>
+            
+            <div class="quest-log">
+                <h3 style="margin-top: 0; display: flex; align-items: center; gap: 10px;">⚔️ Aktywna Misja: "Kofeinowy Zapas"</h3>
+                <p style="font-size: 14px; opacity: 0.9;">Wspólnie zespanyjcie 5 kaw przez AR w Gdańsku, aby odblokować -10% na Gaming Pass dla całej Gildii!</p>
+                <div class="q-progress-bar">
+                    <div class="q-progress-fill" id="q-bar" style="width: 60%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold;">
+                    <span id="q-status">Postęp: 3 / 5 zeskanowanych kaw</span>
+                    <span style="color: var(--duke-gold);">Nagroda: -10% Gaming Pass</span>
+                </div>
+            </div>
+
+            <div class="social-panel">
+                <h3>Tablica Ogłoszeń Gildii</h3>
+                <div class="post">
+                    <b>@Marek_GDN (Lider):</b> Słuchajcie, Asia właśnie zeskanowała kawę w Oliwie! Brakuje nam już tylko jednej, żeby zgarnąć zniżkę na Passa! Kto jest w pobliżu sklepu?
+                </div>
+                <div class="post">
+                    <b>@Asia_Oliwa:</b> Wymienię dostęp do gry "Cyberpunk 2077" na 3 dni za skiny CS2 lub 100 Duke Coin!
+                    <button class="btn" style="background:var(--social); color:white; width:auto; font-size:11px; padding:5px 15px; margin-top:5px;" onclick="pop('Wysłano propozycję wymiany!')">ZAPROPONUJ TRADE</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="p-gaming" class="page">
+            <h2 style="margin-top: 0;">Duke Gaming Pass (Steam Cloud)</h2>
+            <div class="gaming-card">
+                <h3>Wypożyczaj gry, graj w chmurze</h3>
+                <p style="font-size: 14px; opacity: 0.8;">Wybierz pakiet czasowy. Po upływie subskrypcji dostęp do gry wygasa, ale zapisy zostają w Twoim Duke Cloud.</p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-top:20px;">
+                    <button class="btn" onclick="buyPass(7)" style="background:rgba(255,255,255,0.1); color:white;">7 DNI<br><b>19,90 zł</b></button>
+                    <button class="btn" onclick="buyPass(30)" style="background:var(--gaming); color:white;">30 DNI<br><b>49,90 zł</b></button>
+                    <button class="btn" onclick="buyPass(365)" style="background:rgba(255,255,255,0.1); color:white;">365 DNI<br><b>399,00 zł</b></button>
+                </div>
+                <h4 style="margin-top: 25px;">Zniżka Gildyjna (Gdańsk): <span id="g-discount" style="color: var(--duke-gold);">Oczekiwanie na misję...</span></h4>
+            </div>
+        </div>
+    </main>
+
+    <aside class="sidebar">
+        <h3 style="margin-top:0; display: flex; align-items: center; gap: 10px;">✨ Duke AI Assistant</h3>
+        <p style="font-size: 12px; opacity: 0.8;">Twój osobisty opiekun w Gdańsku</p>
+        <div class="ai-chat" id="aiBox">
+            Duke AI: Hej! Zauważyłem, że Twoja kawa kończy się pojutrze. Brakuje nam tylko jednej zeskanowanej kawy w gildii, żeby zgarnąć -10% na Gaming Pass! Może zamówisz ją teraz przez Passport z Czech (49 zł) i przy okazji dokończysz misję?
+        </div>
+        <input type="text" id="aiIn" style="width:100%; padding:12px; border-radius:10px; border:none;" placeholder="Zapytaj AI o misję, cenę lub rynki..." onkeypress="aiTalk(event)">
+        <div style="margin-top:20px; font-size:11px; opacity:0.8; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+            <b>Twoje One Box (Gdańsk Oliwa):</b><br>
+            📍 ul. Polanki - <span style="color:var(--duke-gold);">Paczka z Berlina czeka!</span>
+        </div>
+    </aside>
+</div>
+
+<div class="mobile-nav">
+    <div class="mobile-tab active" onclick="switchPage(null, 'p-main')">📦<small>Rynek</small></div>
+    <div class="mobile-tab" onclick="switchPage(null, 'p-social')">🌐<small>Social</small></div>
+    <div class="btn-ar" onclick="openScanner()">📷</div>
+    <div class="mobile-tab" onclick="switchPage(null, 'p-inventory')">🏠<small>Dom</small></div>
+    <div class="mobile-tab" onclick="toggleTheme()" style="color: var(--duke-gold);">🌓<small>Tryb</small></div>
+</div>
+
+<script>
+    // BAZA DANYCH (Zintegrowana)
+    let db = [
+        { id: 1, title: "Zegarek Duke Chrono Złoty", price: 1250, img: "⌚", loc: "PL", dist: "Oliwa (2km)", neg: true, min: 1100, ar: true, type: 'new' },
+        { id: 2, title: "Słuchawki Berlin Pro", price: 890, img: "🎧", loc: "DE", dist: "Passport EU", neg: false, ar: false, type: 'new' },
+        { id: 3, title: "Okulary Aviator Gold", price: 350, img: "🕶️", loc: "PL", dist: "Śródmieście (5km)", neg: true, min: 300, ar: true, type: 'new' },
+        { id: 4, title: "Rower Miejski Retro (Używany)", price: 1450, img: "🚲", loc: "PL", dist: "Wrzeszcz (3km)", neg: true, min: 1300, ar: false, type: 'used' }
+    ];
+
+    let cart = 0, passDays = 0, currentLoc = 'PL', questProgress = 3, guildDiscount = 0;
+
+    // RENDEROWANIE RYNKU
+    function render() {
+        const grid = document.getElementById('mainGrid');
+        const filter = document.getElementById('gSearch').value.toLowerCase();
+        grid.innerHTML = "";
+
+        const filtered = db.filter(i => (i.loc === currentLoc || i.type === 'used') && i.title.toLowerCase().includes(filter));
+
+        if(filtered.length === 0) { grid.innerHTML = "<p style='grid-column: 1/-1; text-align:center; opacity:0.5;'>Brak produktów w tym regionie.</p>"; }
+
+        filtered.forEach(i => {
+            grid.innerHTML += `
+                <div class="p-card">
+                    <div class="p-img">
+                        ${i.img}
+                        <span style="position:absolute; top:10px; left:10px; font-size:10px; background:var(--passport); color:white; padding:2px 5px; border-radius:4px;">${i.loc}</span>
+                        ${i.type === 'used' ? `<span style="position:absolute; top:10px; right:10px; font-size:10px; background:var(--recomm); color:white; padding:2px 5px; border-radius:4px;">RE-COMM</span>` : ''}
+                    </div>
+                    <div style="margin-top:10px; font-size:12px; color:var(--inventory); font-weight: bold;">🚚 One Box: Jutro 10:00</div>
+                    <div style="font-size:22px; font-weight:bold; color:var(--duke-blue); margin:5px 0;">${i.price.toFixed(2)} zł</div>
+                    <div style="font-size:13px; font-weight:600; min-height:32px;">${i.title}</div>
+                    <small>📍 ${i.dist}</small>
+                    
+                    ${i.neg ? `
+                        <div style="background:var(--bg); padding:8px; border-radius:8px; margin-top:10px; border: 1px dashed var(--duke-blue);">
+                            <small style="font-weight:bold; color:var(--duke-blue);">Negocjuj z AI:</small>
+                            <input type="number" id="neg-${i.id}" placeholder="Twoja cena..." style="width:100%; font-size:11px; padding:5px; margin-top:5px; border-radius:4px; border:1px solid #ddd;">
+                            <button onclick="negotiate(${i.id}, ${i.min})" class="btn" style="width:100%; font-size:10px; background:var(--duke-blue); color:white; padding:5px; margin-top:5px;">WYŚLIJ OFERTĘ</button>
+                        </div>
+                    ` : ''}
+
+                    <button onclick="addCart()" class="btn" style="width:100%; background:var(--duke-gold); color:black; margin-top:10px;">KUP TERAZ</button>
+                </div>
+            `;
+        });
+        updatePageTitle();
+    }
+
+    function updatePageTitle() {
+        const flags = { 'PL': '🇵🇱 Polska', 'CZ': '🇨🇿 Czechy', 'DE': '🇩🇪 Niemcy' };
+        document.getElementById('pageTitle').innerText = `Dzień dobry, Gdańsk! (Region ${flags[currentLoc]})`;
+    }
+
+    // --- AR SCANNER, INVENTORY & QUEST LOGIC (ZINTEGROWANE) ---
+    function openScanner() {
+        if(!document.body.classList.contains('mobile-mode')) { pop("Skaner AR dostępny tylko w trybie telefonu! Kliknij 'Tryb Telefonu' w nagłówku."); return; }
+        document.getElementById('ar-scanner').style.display = 'flex';
+        document.getElementById('ar-status').innerText = "Duke AR Vision uruchomiony. Szukam kawy w Gdańsku...";
+        
+        // Symulacja skanowania AR + Detekcja Daty + Postęp Misji
+        setTimeout(() => {
+            const prod = "Kawa Lavazza (Scan)";
+            const date = "Najlepiej spożyć przed: 12.2025";
+            
+            // 1. Dodaj do spiżarni
+            document.getElementById('inventory-list').innerHTML += `
+                <div class="post" style="background:#e0f7fa;">
+                    ♻️ <strong>${prod}</strong> (${date}) - <small style="color:var(--inventory);">Świeża</small>
+                </div>
+            `;
+
+            // 2. Zaktualizuj misję (Grywalizacja)
+            questProgress++;
+            if(questProgress <= 5) {
+                const fill = (questProgress / 5) * 100;
+                document.getElementById('q-bar').style.width = fill + "%";
+                document.getElementById('q-status').innerText = `Postęp: ${questProgress} / 5 zeskanowanych kaw`;
+                
+                let aiMsg = "";
+                if(questProgress < 5) {
+                    aiMsg = `Duke AI: Świetnie! Zeskanowałeś kawę. Brakuje nam jeszcze ${5 - questProgress}, aby gildia zdobyła zniżkę!`;
+                } else {
+                    aiMsg = `Duke AI: BRAWO! Misja ukończona! Gildia Gdańsk zdobywa -10% na Gaming Pass!`;
+                    document.getElementById('g-discount').innerText = "-10% AKTYWNE!";
+                    document.getElementById('g-discount').style.color = "var(--success)";
+                    guildDiscount = 10;
+                    pop("🎉 MISJA UKOŃCZONA! Zniżka gildyjna aktywna!");
+                }
+                document.getElementById('aiBox').innerHTML += `<div>${aiMsg}</div>`;
+                document.getElementById('aiBox').scrollTop = document.getElementById('aiBox').scrollHeight;
+            }
+            
+            alert(`✅ Duke AR: Znaleziono ${prod}. ${date}. Dodano do spiżarni i zaliczono punkt misji!`);
+            closeScanner();
+        }, 2500);
+    }
+    function closeScanner() { document.getElementById('ar-scanner').style.display = 'none'; }
+
+    // --- GLOBAL LOGIC (Zintegrowana) ---
+    function toggleMobile() {
+        const isMob = document.body.classList.toggle('mobile-mode');
+        document.querySelector('.mode-btn span').innerText = isMob ? "Wersja Desktop" : "Tryb Telefonu";
+        pop(isMob ? "Tryb Telefonu aktywowany" : "Powrót do Desktopu");
+        // Reset navigation when switching modes
+        if(!isMob) { switchPage(null, 'p-main'); document.querySelectorAll('.tab')[0].classList.add('active'); }
+        else { switchPage(null, 'p-main'); document.querySelectorAll('.mobile-tab')[0].classList.add('active'); }
+    }
+
+    function toggleTheme() {
+        const next = document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        document.body.setAttribute('data-theme', next);
+        pop(`Tryb: ${next === 'dark' ? 'Ciemny' : 'Jasny'}`);
+    }
+
+    function switchPage(e, id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        
+        // Desktop Tabs
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        // Mobile Tabs
+        document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+
+        if(e) { e.currentTarget.classList.add('active'); }
+        else {
+            // Find and activate the correct mobile tab if event is null (called from mobile nav)
+            const mobileTabs = document.querySelectorAll('.mobile-tab');
+            if(id === 'p-main') mobileTabs[0].classList.add('active');
+            if(id === 'p-social') mobileTabs[1].classList.add('active');
+            if(id === 'p-inventory') mobileTabs[2].classList.add('active');
+        }
+    }
+
+    function aiTalk(e) {
+        if(e.key === 'Enter') {
+            const aiBox = document.getElementById('aiBox');
+            aiBox.innerHTML += `<div style="color:var(--duke-gold); margin-top:10px;">Ty: ${e.target.value}</div>`;
+            aiBox.innerHTML += `<div>Duke AI: Sprawdzam... Analizuję rynki Passport i status misji gildii w Gdańsku dla Twojego zapytania.</div>`;
+            e.target.value = "";
+            aiBox.scrollTop = aiBox.scrollHeight;
+        }
+    }
+
+    function negotiate(id, min) {
+        const offer = parseFloat(document.getElementById(`neg-${id}`).value);
+        if(offer >= min) {
+            pop(`✅ AI: Zaakceptowano! Nowa cena: ${offer} zł. Dodano do koszyka.`);
+            addCart();
+        } else {
+            pop(`❌ AI: Odrzucono. Spróbuj powyżej ${min} zł.`);
+        }
+        document.getElementById(`neg-${id}`).value = "";
+    }
+
+    function setLoc(l) {
+        currentLoc = l;
+        document.querySelectorAll('#p-main .mode-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        render();
+        pop(`Region Passport: ${l}`);
+    }
+
+    function buyPass(d) {
+        const price = d === 7 ? 19.90 : (d === 30 ? 49.90 : 399.00);
+        const finalPrice = guildDiscount > 0 ? (price * (1 - guildDiscount/100)).toFixed(2) : price.toFixed(2);
+        if(confirm(`Czy chcesz kupić Gaming Pass na ${d} dni? Cena zniżkowa Gildii: ${finalPrice} zł (zamiast ${price.toFixed(2)} zł)`)) {
+            passDays += d;
+            pop("🎉 Gaming Pass AKTYWNY! Możesz grać przez Steam Cloud.");
+        }
+    }
+
+    function addCart() {
+        cart++;
+        document.getElementById('cCnt').innerText = cart;
+        pop("Dodano do koszyka Duke Elite");
+    }
+
+    function swipe(el, name) {
+        el.querySelector('.swipe-knob').style.left = 'calc(100% - 50px)';
+        el.querySelector('.swipe-knob').style.background = '#008447';
+        setTimeout(() => {
+            addCart();
+            pop(`Duke AI zamówił ${name} (One Box Gdańsk)`);
+            el.querySelector('.swipe-knob').style.left = '0';
+            el.querySelector('.swipe-knob').style.background = 'var(--inventory)';
+        }, 500);
+    }
+
+    function pop(m) {
+        const t = document.getElementById('toast');
+        t.innerText = m;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    // INIT
+    render();
+</script>
+</body>
+</html>
